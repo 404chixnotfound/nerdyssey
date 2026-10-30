@@ -5,6 +5,11 @@
 [functions]
   node_bundler = "esbuild"
 
+[[redirects]]
+  from = "/s1"
+  to = "/s1/index.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]

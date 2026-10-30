@@ -9,5 +9,5 @@ export default async (req, context) => {
     return new Response(JSON.stringify({ error: 'SERVER NOT CONFIGURED' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
   const store = getStore({ name: 'nerdyssey', consistency: 'strong' });
-  return createHandler({ store, password })(req, context.ip);
+  return createHandler({ store, password, s1Word: process.env.S1_WORD || '' })(req, context.ip);
 };

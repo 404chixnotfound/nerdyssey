@@ -19,7 +19,7 @@ const json = (obj, status = 200, headers = {}) =>
 const sha = s => createHash('sha256').update(String(s)).digest();
 const validPts = n => Number.isInteger(n) && n >= 0 && n <= MAX_PTS;
 
-export function createHandler({ store, password }) {
+export function createHandler({ store, password, s1Word = '', s1Value = '6' }) {
   const secret = createHash('sha256').update('nerdyssey|' + password).digest(); // token dies if password changes
   const sign = exp => createHmac('sha256', secret).update(String(exp)).digest('hex');
   const makeToken = () => { const exp = Math.floor(Date.now() / 1000) + TTL; return `${exp}.${sign(exp)}`; };
@@ -74,6 +74,25 @@ export function createHandler({ store, password }) {
       const n = f.n + 1;
       await store.setJSON(failKey, { n, until: n >= 5 ? Date.now() + 60000 : 0 });
       return json({ error: 'ACCESS DENIED' }, 401);
+    }
+
+    // ---- /s1 puzzle: server checks the word, value only leaves on a match ----
+    if (m === 'POST' && p === '/api/s1/unlock') {
+      if (!s1Word) return json({ error: 'NOT CONFIGURED' }, 503);
+      const failKey = 'fails1:' + createHash('sha256').update(ip).digest('hex').slice(0, 16);
+      const f = (await store.get(failKey, { type: 'json' })) || { n: 0, until: 0 };
+      if (f.until > Date.now()) return json({ error: 'LOCKED' }, 429);
+      let body = {};
+      try { body = await req.json(); } catch { return json({ error: 'BAD REQUEST' }, 400); }
+      const norm = x => String(x).trim().toLowerCase();
+      if (typeof body.word === 'string' && body.word.length <= 100 && timingSafeEqual(sha(norm(body.word)), sha(norm(s1Word)))) {
+        if (f.n) await store.delete(failKey);
+        return json({ ok: true, value: s1Value });
+      }
+      const n = f.n + 1;
+      // 5 wrong tries = this IP is locked permanently (until the blob key is deleted)
+      await store.setJSON(failKey, { n, until: n >= 5 ? Number.MAX_SAFE_INTEGER : 0 });
+      return json({ error: n >= 5 ? 'LOCKED' : 'WRONG WORD', left: Math.max(0, 5 - n) }, n >= 5 ? 429 : 401);
     }
 
     if (m === 'POST' && p === '/api/logout') {

@@ -9,3 +9,7 @@
 CLI alternative: `npm i -g netlify-cli && netlify deploy --build --prod`
 
 Data stored in Netlify Blobs. Visitors poll every 4s.
+
+## /s1 page
+Secret word unlocks the digit "6". Word is checked on the server.
+Set env var `S1_WORD` in Netlify (not secret-flagged needed, but fine to mark secret). Case and spaces ignored.
